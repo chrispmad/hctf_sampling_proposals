@@ -29,33 +29,25 @@ dat_sf = dat_sf |>
   dplyr::mutate(waterbody_is_on_priority_list = waterbody_name %in% shortlist_wb_names)
 
 all_shortlist_lakes = all_shortlist_lakes |> 
-  dplyr::mutate(proposed_sampling = GNIS_NA %in% proposed_wb_names)
+  dplyr::mutate(proposed_sampling = ifelse(GNIS_NA %in% proposed_wb_names,"Sampling Proposed","No Sampling Proposed"))
 
 # simplify lake geometries a bit.
 all_shortlist_lakes_s = sf::st_simplify(all_shortlist_lakes, dTolerance = 20)
 
-dat_sf_on_list = dat_sf[dat_sf$waterbody_is_on_priority_list,]
-dat_sf_not_on_list = dat_sf[!dat_sf$waterbody_is_on_priority_list,]
+all_shortlist_lakes_w_props = all_shortlist_lakes_s |> dplyr::filter(proposed_sampling == "Sampling Proposed")
+all_shortlist_lakes_wout_props = all_shortlist_lakes_s |> dplyr::filter(proposed_sampling != "Sampling Proposed")
 
 # Create interactive map.
 my_pal = leaflet::colorFactor(palette = "Set3", domain = unique(dat_sf$Group))
 
-sampling_dots_outline_pal = leaflet::colorFactor(palette = c("red","black"), domain = unique(dat_sf$waterbody_is_on_priority_list))
+props_pal = leaflet::colorFactor(palette = c("purple","darkgreen"), domain = unique(all_shortlist_lakes_s$proposed_sampling))
 
-dat_sf_on_list_tbls = leafpop::popupTable(
-  dat_sf_on_list |> 
+dat_sf_tbls = leafpop::popupTable(
+  dat_sf |> 
     sf::st_drop_geometry() |> 
     dplyr::select(-does_the_proposed_sampling_frequency_differ_from_current_priority_list) |> 
     dplyr::mutate(dplyr::across(c(on_last_years_priority_waterbody_list,sampled_last_year,substrate_sampler_planned), \(x) ifelse(x == "Y", "Yes", "No"))) |> 
     # dplyr::mutate(justification_for_sampling = stringr::str_replace_all(justification_for_sampling, "[\\,,\\.]", "<br>")) |> 
-    dplyr::mutate(justification_for_sampling = gsub("((?:\\S+\\s+){6}\\S+)([ ,\\.])", "\\1<br>", justification_for_sampling, perl = TRUE))
-)
-
-dat_sf_not_on_list_tbls = leafpop::popupTable(
-  dat_sf_not_on_list |> 
-    sf::st_drop_geometry() |> 
-    dplyr::select(-does_the_proposed_sampling_frequency_differ_from_current_priority_list) |> 
-    dplyr::mutate(dplyr::across(c(on_last_years_priority_waterbody_list,sampled_last_year,substrate_sampler_planned), \(x) ifelse(x == "Y", "Yes", "No"))) |> 
     dplyr::mutate(justification_for_sampling = gsub("((?:\\S+\\s+){6}\\S+)([ ,\\.])", "\\1<br>", justification_for_sampling, perl = TRUE))
 )
 
@@ -64,41 +56,42 @@ leaflet(width = '100%') |>
   addProviderTiles(providers$CartoDB, group = "cartoDB") |>
   addLayersControl(position = 'bottomleft', 
                    baseGroups = c("cartoDB","OpenStreetMap"),
-                   overlayGroups = c("not_on_priority_list",
-                                     "on_priority_list",
-                                     "waterbodies"),
+                   overlayGroups = c("wbs with sampling prop",
+                                     "wbs without sampling prop",
+                                     "sampling points"),
                    options = layersControlOptions(collapsed = F)) |>
   leaflet::addMapPane(name = "waterbodies", zIndex = 300) |>
   leaflet::addMapPane(name = "sampling_points", zIndex = 500) |>
   addPolygons(
-    data = all_shortlist_lakes_s,
-    color = ~ifelse(proposed_sampling, "darkgreen","purple"),
+    data = all_shortlist_lakes_w_props,
+    weight = 2,
+    color = ~props_pal(proposed_sampling),
+    fillColor = ~props_pal(proposed_sampling),
     label = ~GNIS_NA,
     options = pathOptions(pane = "waterbodies"),
-    group = 'waterbodies'
+    group = 'wbs with sampling prop'
+  ) |> 
+  addPolygons(
+    data = all_shortlist_lakes_wout_props,
+    weight = 2,
+    color = ~props_pal(proposed_sampling),
+    fillColor = ~props_pal(proposed_sampling),
+    label = ~GNIS_NA,
+    options = pathOptions(pane = "waterbodies"),
+    group = 'wbs without sampling prop'
   ) |> 
   addCircleMarkers(
-    data = dat_sf_on_list,
+    data = dat_sf,
     fillColor = ~my_pal(Group),
-    color = ~sampling_dots_outline_pal(waterbody_is_on_priority_list),
+    color = 'black',
     fillOpacity = 0.75,
     weight = 1.5,
-    label = ~lapply(dat_sf_on_list_tbls, htmltools::HTML),
-    group = "on_priority_list",
+    label = ~lapply(dat_sf_tbls, htmltools::HTML),
+    group = 'sampling points',
     options = pathOptions(pane = "sampling_points")
   ) |>
-  addCircleMarkers(
-    data = dat_sf_not_on_list,
-    fillColor = ~my_pal(Group),
-    color = ~sampling_dots_outline_pal(waterbody_is_on_priority_list),
-    fillOpacity = 0.75,
-    weight = 1.5,
-    label = ~lapply(dat_sf_not_on_list_tbls, htmltools::HTML),
-    group = "not_on_priority_list",
-    options = pathOptions(pane = "sampling_points")
-  ) |> 
-  addLegend(pal = my_pal, values = unique(dat_sf$Group)) |>
-  addLegend(pal = sampling_dots_outline_pal, values = unique(dat_sf$waterbody_is_on_priority_list), title = "On Priority List") |>
+  addLegend(title = "Organization", pal = my_pal, values = unique(dat_sf$Group)) |>
+  addLegend(title = "Sampling Proposal", pal = props_pal, values = unique(all_shortlist_lakes_s$proposed_sampling)) |> 
   addScaleBar('bottomright') |>
   leaflet.extras::addResetMapButton()
 ```
