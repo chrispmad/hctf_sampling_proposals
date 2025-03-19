@@ -11,12 +11,11 @@ editor_options:
 knitr::opts_chunk$set(echo = F, message = F, warning = F)
 library(sf)
 library(leaflet)
+library(bcdata)
 
 ```
 
-## Interactive Map
-
-```{r}
+```{r load_data}
 dat_sf = sf::read_sf("data/2025_sampling_locations.gpkg")
 
 all_shortlist_lakes = sf::read_sf("W:/CMadsen/Projects/ZQMussels/2025 IMDP Final Report/data/spatial/waterbodies_zqm_shortlist_risk_estimates.gpkg") |> 
@@ -36,11 +35,34 @@ all_shortlist_lakes_s = sf::st_simplify(all_shortlist_lakes, dTolerance = 20)
 
 all_shortlist_lakes_w_props = all_shortlist_lakes_s |> dplyr::filter(proposed_sampling == "Sampling Proposed")
 all_shortlist_lakes_wout_props = all_shortlist_lakes_s |> dplyr::filter(proposed_sampling != "Sampling Proposed")
+```
 
+```{r get_parks}
+if(!file.exists('data/all_bc_parks_simplified.gpkg')){
+  all_bc_parks = bcdata::bcdc_query_geodata('bc-parks-ecological-reserves-and-protected-areas') |> 
+    collect() |> 
+    sf::st_transform(4326)
+  
+  sf::write_sf(all_bc_parks, "data/all_bc_parks.gpkg")
+  
+  all_bc_parks_s = rmapshaper::ms_simplify(all_bc_parks)
+  
+  sf::write_sf(all_bc_parks_s, "data/all_bc_parks_simplified.gpkg")
+  
+  bc_parks = all_bc_parks_s
+  rm(all_bc_parks); rm(all_bc_parks_s)
+} else {
+  bc_parks = sf::read_sf('data/all_bc_parks_simplified.gpkg')
+}
+```
+
+## Interactive Map
+
+```{r}
 # Create interactive map.
 my_pal = leaflet::colorFactor(palette = "Set3", domain = unique(dat_sf$Group))
 
-props_pal = leaflet::colorFactor(palette = c("purple","darkgreen"), domain = unique(all_shortlist_lakes_s$proposed_sampling))
+props_pal = leaflet::colorFactor(palette = c("purple","orange"), domain = unique(all_shortlist_lakes_s$proposed_sampling))
 
 dat_sf_tbls = leafpop::popupTable(
   dat_sf |> 
@@ -56,12 +78,24 @@ leaflet(width = '100%') |>
   addProviderTiles(providers$CartoDB, group = "cartoDB") |>
   addLayersControl(position = 'bottomleft', 
                    baseGroups = c("cartoDB","OpenStreetMap"),
-                   overlayGroups = c("wbs with sampling prop",
+                   overlayGroups = c('provincial parks',
+                                     "wbs with sampling prop",
                                      "wbs without sampling prop",
                                      "sampling points"),
                    options = layersControlOptions(collapsed = F)) |>
+  leaflet::addMapPane(name = "parks", zIndex = 200) |>
   leaflet::addMapPane(name = "waterbodies", zIndex = 300) |>
   leaflet::addMapPane(name = "sampling_points", zIndex = 500) |>
+  addPolygons(
+    data = bc_parks,
+    color = 'darkgreen',
+    fill = 'darkgreen',
+    fillOpacity = 0.5,
+    weight = 1,
+    label = ~stringr::str_to_title(PROTECTED_LANDS_NAME),
+    group = 'provincial parks',
+    options = pathOptions(pane = 'parks')
+  ) |> 
   addPolygons(
     data = all_shortlist_lakes_w_props,
     weight = 2,
@@ -93,6 +127,7 @@ leaflet(width = '100%') |>
   addLegend(title = "Organization", pal = my_pal, values = unique(dat_sf$Group)) |>
   addLegend(title = "Sampling Proposal", pal = props_pal, values = unique(all_shortlist_lakes_s$proposed_sampling)) |> 
   addScaleBar('bottomright') |>
-  leaflet.extras::addResetMapButton()
+  leaflet.extras::addResetMapButton() |> 
+  leaflet.extras::addFullscreenControl(position = 'bottomright')
 ```
 
