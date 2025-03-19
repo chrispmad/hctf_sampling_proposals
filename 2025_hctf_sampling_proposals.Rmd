@@ -126,6 +126,7 @@ leaflet(width = '100%') |>
   ) |>
   addLegend(title = "Organization", pal = my_pal, values = unique(dat_sf$Group)) |>
   addLegend(title = "Sampling Proposal", pal = props_pal, values = unique(all_shortlist_lakes_s$proposed_sampling)) |> 
+  addLegend(title = "Provincial Parks", labels = 'Park/Protected Area', colors = 'darkgreen') |> 
   addScaleBar('bottomright') |>
   leaflet.extras::addResetMapButton() |> 
   leaflet.extras::addFullscreenControl(position = 'bottomright')
