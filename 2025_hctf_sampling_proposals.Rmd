@@ -7,6 +7,13 @@ editor_options:
   chunk_output_type: console
 ---
 
+```{css, echo = FALSE}
+.leaflet-ENV_sampling_points-pane {
+  width: 10rem !important;
+  height: 10rem !important;
+}
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F, message = F, warning = F)
 library(sf)
@@ -20,6 +27,8 @@ dat_sf = sf::read_sf("data/2025_sampling_locations.gpkg")
 
 all_shortlist_lakes = sf::read_sf("W:/CMadsen/Projects/ZQMussels/2025 IMDP Final Report/data/spatial/waterbodies_zqm_shortlist_risk_estimates.gpkg") |> 
   sf::st_transform(4326)
+
+menv_sampling = sf::read_sf("data/ministry_of_env_sampling.gpkg")
 
 proposed_wb_names = unique(dat_sf$waterbody_name)
 shortlist_wb_names = unique(all_shortlist_lakes$GNIS_NA)
@@ -71,21 +80,31 @@ dat_sf_tbls = leafpop::popupTable(
     dplyr::mutate(dplyr::across(c(on_last_years_priority_waterbody_list,sampled_last_year,substrate_sampler_planned), \(x) ifelse(x == "Y", "Yes", "No"))) |> 
     # dplyr::mutate(justification_for_sampling = stringr::str_replace_all(justification_for_sampling, "[\\,,\\.]", "<br>")) |> 
     dplyr::mutate(justification_for_sampling = gsub("((?:\\S+\\s+){6}\\S+)([ ,\\.])", "\\1<br>", justification_for_sampling, perl = TRUE))
-)
+,
+className = 'hctf_popup_table')
+
+# Pipette icon comes from this webpage: https://www.freeiconspng.com/img/31423
+env_square_marker <-
+  makeIcon(iconUrl = "utils/water-fountain.png",
+           iconWidth = 18,
+           iconHeight = 18,
+           )
 
 leaflet(width = '100%') |>
   addTiles(group = "OpenStreetMap") |>
   addProviderTiles(providers$CartoDB, group = "cartoDB") |>
-  addLayersControl(position = 'bottomleft', 
+  addLayersControl(position = 'bottomleft',
                    baseGroups = c("cartoDB","OpenStreetMap"),
                    overlayGroups = c('provincial parks',
                                      "wbs with sampling prop",
                                      "wbs without sampling prop",
-                                     "sampling points"),
+                                     "sampling points",
+                                     "ENV sampling points"),
                    options = layersControlOptions(collapsed = F)) |>
   leaflet::addMapPane(name = "parks", zIndex = 200) |>
   leaflet::addMapPane(name = "waterbodies", zIndex = 300) |>
   leaflet::addMapPane(name = "sampling_points", zIndex = 500) |>
+  leaflet::addMapPane(name = "ENV_sampling_points", zIndex = 600) |>
   addPolygons(
     data = bc_parks,
     color = 'darkgreen',
@@ -124,11 +143,23 @@ leaflet(width = '100%') |>
     group = 'sampling points',
     options = pathOptions(pane = "sampling_points")
   ) |>
+  addMarkers(
+    data = menv_sampling,
+    icon = env_square_marker,
+    label = ~lake_name_ems_site_name,
+    group = 'ENV sampling points',
+    options = markerOptions(pane="ENV_sampling_points")
+    # options = pathOptions(pane = "ENV_sampling_points")
+  ) |>
   addLegend(title = "Organization", pal = my_pal, values = unique(dat_sf$Group)) |>
   addLegend(title = "Sampling Proposal", pal = props_pal, values = unique(all_shortlist_lakes_s$proposed_sampling)) |> 
   addLegend(title = "Provincial Parks", labels = 'Park/Protected Area', colors = 'darkgreen') |> 
   addScaleBar('bottomright') |>
   leaflet.extras::addResetMapButton() |> 
   leaflet.extras::addFullscreenControl(position = 'bottomright')
+```
+
+```{r}
+
 ```
 
