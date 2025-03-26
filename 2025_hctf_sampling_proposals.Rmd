@@ -65,6 +65,15 @@ if(!file.exists('data/all_bc_parks_simplified.gpkg')){
 }
 ```
 
+#### Priority Waterbodies without Proposals that Overlap with MENV sampling sites
+```{r run_overlap}
+# run_overlap_of_priority_wbs_without_hctf_proposals_and_env_sampling_sites
+all_shortlist_lakes_wout_props |> 
+  sf::st_filter(menv_sampling) |> 
+  sf::st_drop_geometry() |> 
+  DT::datatable()
+```
+
 ## Interactive Map
 
 ```{r}
