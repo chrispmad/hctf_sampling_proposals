@@ -24,6 +24,16 @@ library(bcdata)
 ```{r load_data}
 dat_sf = sf::read_sf("data/2025_sampling_locations.gpkg")
 
+# Transform some sampling location names so that they match with
+# the names in the freshwater atlas.
+dat_sf = dat_sf |> 
+  dplyr::mutate(waterbody_name = dplyr::case_when(
+   waterbody_name == 'Arrow Lake, Upper' ~ "Upper Arrow Lake",
+   waterbody_name == 'Arrow Lake, Lower' ~ "Lower Arrow Lake",
+   stringr::str_detect(waterbody_name, 'Kootenay River') ~ "Kootenay River",
+   T ~ waterbody_name
+  ))
+
 all_shortlist_lakes = sf::read_sf("W:/CMadsen/Projects/ZQMussels/2025 IMDP Final Report/data/spatial/waterbodies_zqm_shortlist_risk_estimates.gpkg") |> 
   sf::st_transform(4326)
 
