@@ -35,6 +35,7 @@ excel_files = purrr::map(file_paths, ~ {
     dt = dt |>
       dplyr::rename(does_the_proposed_sampling_frequency_differ_from_current_priority_list = does_the_proposed_sampling_frequency_different_from_current_priority_list)
   }
+  dt
 }, .progress = TRUE)
 
 names(excel_files) = file_names
