@@ -24,6 +24,10 @@ library(bcdata)
 ```{r load_data}
 dat_sf = sf::read_sf("data/2025_sampling_locations.gpkg")
 
+# Some folks have retracted sampling applications. Remove them from the pool here.
+dat_sf = dat_sf |> 
+  dplyr::filter(!Group %in% c("LRISS"))
+
 # Transform some sampling location names so that they match with
 # the names in the freshwater atlas.
 dat_sf = dat_sf |> 
@@ -53,6 +57,10 @@ all_shortlist_lakes_s = sf::st_simplify(all_shortlist_lakes, dTolerance = 20)
 
 all_shortlist_lakes_w_props = all_shortlist_lakes_s |> dplyr::filter(proposed_sampling == "Sampling Proposed")
 all_shortlist_lakes_wout_props = all_shortlist_lakes_s |> dplyr::filter(proposed_sampling != "Sampling Proposed")
+```
+
+```{r drop_samplers_who_have_retracted_application}
+
 ```
 
 ```{r get_parks}
