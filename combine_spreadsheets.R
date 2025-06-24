@@ -6,7 +6,7 @@ library(leaflet)
 
 orig_wd = getwd()
 
-my_folder = "//SFP.IDIR.BCGOV/S140/S40203/RSD_ FISH & AQUATIC HABITAT BRANCH/General/2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Operations/Lake Monitoring/2025/HCTF grant reviews/Waterbody Sampling Tables"
+my_folder = "//SFP.IDIR.BCGOV/S140/S40203/WFC AEB/General/2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Operations/Lake Monitoring/2025/HCTF grant reviews/Waterbody Sampling Tables"
 
 setwd(my_folder)
 
